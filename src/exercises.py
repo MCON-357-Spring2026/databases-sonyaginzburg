@@ -87,7 +87,7 @@ def find_student_by_email(conn: sqlite3.Connection, email: str) -> Optional[sqli
       - Use a parameterized SELECT
       - Use fetchone()
     """
-    cursor = conn.execute("SELECT id ,name,email from students WHERE email ?;", ( email,))
+    cursor = conn.execute("SELECT id ,name,email from students WHERE email = ?;", ( email,))
     return cursor.fetchone()
     raise NotImplementedError
 
@@ -118,7 +118,7 @@ def delete_student(conn: sqlite3.Connection, student_id: int) -> int:
     TODO:
       - Use parameterized DELETE
     """
-    cursor = conn.execute("DELETE from student WHERE ID = ?;", (student_id,))
+    cursor = conn.execute("DELETE from students WHERE ID = ?;", (student_id,))
     return cursor.rowcount
     raise NotImplementedError
 
@@ -134,7 +134,7 @@ def list_enrollments(conn: sqlite3.Connection) -> list[sqlite3.Row]:
       - Write a SELECT with JOIN across enrollments, students, courses
       - ORDER BY student_name, course_code
     """
-    cursor = conn.execute(
+    rows = conn.execute(
     """
     SELECT students.name AS student_name,
     courses.code AS course_code,
@@ -145,7 +145,7 @@ def list_enrollments(conn: sqlite3.Connection) -> list[sqlite3.Row]:
     ORDER BY student_name, course_code;
     """
     ).fetchall()
-    return cursor.fetchall()
+    return rows
     raise NotImplementedError
 
 
