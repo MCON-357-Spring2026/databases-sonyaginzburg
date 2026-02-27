@@ -66,7 +66,32 @@ def create_schema(conn: sqlite3.Connection) -> None:
       - score (required, >= 0)
       - UNIQUE(student_id, assignment_id) to prevent duplicates
     """
-    raise NotImplementedError
+    conn.executescript(
+        """
+        CREATE TABLE students (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        email TEXT NOT NULL UNIQUE    
+        );
+            
+        CREATE TABLE assignments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL UNIQUE,
+        max_points INTEGER NOT NULL CHECK (max_points > 0)   
+        );
+            
+        CREATE TABLE grades(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        student_id INTEGER NOT NULL,
+        assignment_id INTEGER NOT NULL,
+        score INTEGER NOT NULL CHECK ( score >= 0 ),
+        UNIQUE(student_id, assignment_id)
+        FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+        FOREIGN KEY (assignment_id) REFERENCES assignments(id) ON DELETE CASCADE
+        );
+        """
+    )
+
 
 
 # ---------------------------
@@ -74,16 +99,22 @@ def create_schema(conn: sqlite3.Connection) -> None:
 # ---------------------------
 def add_student(conn: sqlite3.Connection, name: str, email: str) -> int:
     """Insert into students and return new id."""
+    cursor = conn.execute("INSERT INTO students(name,email) VALUES (?,?);", (name, email))
+    return cursor.lastrowid
     raise NotImplementedError
 
 
 def add_assignment(conn: sqlite3.Connection, title: str, max_points: int) -> int:
     """Insert into assignments and return new id."""
+    cursor = conn.execute("INSERT INTO assignments(title, max_points) VALUES (?,?);", (title, max_points))
+    return cursor.lastrowid
     raise NotImplementedError
 
 
 def record_grade(conn: sqlite3.Connection, student_id: int, assignment_id: int, score: int) -> int:
     """Insert into grades and return new id."""
+    cursor = conn.execute("INSERT INTO grades(student_id,assignment_id,score) VALUES (?,?,?);", (student_id, assignment_id, score))
+    return cursor.lastrowid
     raise NotImplementedError
 
 
@@ -92,6 +123,8 @@ def record_grade(conn: sqlite3.Connection, student_id: int, assignment_id: int, 
 # ---------------------------
 def list_students(conn: sqlite3.Connection) -> list[sqlite3.Row]:
     """Return all students ordered by name."""
+    cursor = conn.execute("SELECT id ,name,email FROM students ORDER BY name;")
+    return cursor.fetchall()
     raise NotImplementedError
 
 
@@ -103,6 +136,19 @@ def student_grade_report(conn: sqlite3.Connection, student_id: int) -> list[sqli
     Hint:
       percent = ROUND(1.0 * score / max_points * 100, 1)
     """
+    cursor = conn.execute(
+        """
+        SELECT
+            a.title AS assignment_title,
+            g.score,
+            a.max_points,
+            ROUND(1.0 * g.score / a.max_points * 100, 1) AS percent
+        FROM grades g
+                 JOIN assignments a ON g.assignment_id = a.id
+        WHERE g.student_id = ?
+        ORDER BY a.title;
+        """,(student_id))
+    return cursor.fetchall()
     raise NotImplementedError
 
 
@@ -113,6 +159,17 @@ def leaderboard(conn: sqlite3.Connection) -> list[sqlite3.Row]:
 
     avg_percent should average the per-assignment percent for each student.
     """
+    cursor = conn.execute(
+        """
+        SELECT
+            s.name AS student_name,
+            ROUND(AVG(1.0 * g.score / a.max_points * 100), 1) AS avg_percent
+        FROM students s
+        JOIN grades g ON s.id = g.student_id
+        JOIN assignments a ON g.assignment_id = a.id
+        ORDER BY avg_percent DESC;
+        """)
+    return cursor.fetchall()
     raise NotImplementedError
 
 
@@ -143,7 +200,7 @@ def main() -> None:
         # DEMO DATA (customize as you like)
         # ---------------------------
         # TODO: After implementing the insert helpers, uncomment and run this block.
-        """
+
         s_ava = add_student(conn, "Ava", "ava@example.com")
         s_noah = add_student(conn, "Noah", "noah@example.com")
         s_maya = add_student(conn, "Maya", "maya@example.com")
@@ -177,7 +234,7 @@ def main() -> None:
             print_rows(f"Grade report: {s['name']}", rows)
 
         print_rows("Leaderboard by average percent", leaderboard(conn))
-        """
+
 
         print("Homework starter created. Implement TODOs, then uncomment the demo/report blocks in main().")
     finally:
