@@ -147,7 +147,7 @@ def student_grade_report(conn: sqlite3.Connection, student_id: int) -> list[sqli
                  JOIN assignments a ON g.assignment_id = a.id
         WHERE g.student_id = ?
         ORDER BY a.title;
-        """,(student_id))
+        """,(student_id,))
     return cursor.fetchall()
     raise NotImplementedError
 
@@ -167,6 +167,7 @@ def leaderboard(conn: sqlite3.Connection) -> list[sqlite3.Row]:
         FROM students s
         JOIN grades g ON s.id = g.student_id
         JOIN assignments a ON g.assignment_id = a.id
+        GROUP BY s.id    
         ORDER BY avg_percent DESC;
         """)
     return cursor.fetchall()
